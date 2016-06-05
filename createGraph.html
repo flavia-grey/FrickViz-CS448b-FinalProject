@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title> CS448b Final Project </title>
+		<link rel='stylesheet' type='text/css' href='stylesheet.css'/>
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.2/jquery.min.js"></script>
+		<script type-"text/javascript" src="script.js"></script>
+	</head>
+	<body>
+		<script src="https://d3js.org/d3.v3.min.js"></script>
+		<div id="topMenu">
+			<ul>
+				<li><a href="index.html">Home</a></li>
+				<li><a href="explore.html">Explore</a></li>
+				<li><a class="active" href="createGraph.html">Create</a></li>
+				<li style="float:right"><a href="about.html">About</a></li>
+				<li style="float:right"><p>FrickViz: Where DATA becomes ART</p></li>
+		</div>
+		<div id="container">
+			<div class="title">
+				<h1>Create Your Own FrickViz Graph</h1>
+			</div>
+			<p> <b><i>Instructions:</i></b> The data must be saved in a .CSV file, and the column you want to visualize should be named "Data". After selecting the appropriate file, click 'Create Graph'. </p>
+			<div id="formContainer">
+				<form>
+					<div>
+						<p>Select the file you want to visualize:<p> <input type="file" name="datafile" onchange="loadFile()">
+					</div>
+					<input id="updateButton" type="button" value="Create Graph" onclick="visualize(raw_data)">
+					<div>
+						<p>Horizontal separation:</p><input type="number" id="xSpace" step ="1" value="0" min="0" max="20" onblur="visualize(raw_data)">
+					</div>
+					<div>
+						<p>Vertical separation:</p><input type="number" id="ySpace" step="1" value="5" min="0" max="20" onblur="visualize(raw_data)">
+					</div>
+					<div>
+						<p>Interval frequency:</p><input type="number" id="intFreq" step="1" value="0" min="0" max="150" onblur="visualize(raw_data)">
+					</div>
+					<div>
+						<p>Interval space:</p><input type="number" id="intSpace" step="1" value="0" min="0" max="20" onblur="visualize(raw_data)">
+					</div>
+					<div>
+						<p>Rectangle width:</p><input type="number" id="rWidth" step="1" value="15" min="5" max="50" onblur="visualize(raw_data)">
+					</div>
+					<div>
+						<p>Rectangle height:</p><input type="number" id="rHeight" step="1" value="15" min="5" max="50" onblur="visualize(raw_data)">
+					</div>
+					<div>
+						<p>Rectangles per row:</p><input type="number" id="maxR" step="1" value="100" min="10" max="150" onblur="visualize(raw_data)">
+					</div>
+					<input id="updateButton" type="button" value="Update Graph" onclick="visualize(raw_data)">
+				</form>
+			</div>
+			<div id="svg-col" class="viz">
+			</div>
+			<div id="svg-leg" class="viz">
+				<p class="legendTitle">Legend</p>
+				<p class="legendText">Hover over legend</p>
+				<p class="legendText">to highlight category:</p>
+			</div>
+		</div>
+		<script>
+
+		var reader = new FileReader();
+		var raw_data;
+
+		function loadFile(){
+			var file = document.querySelector('input[type=file]').files[0];
+			reader.addEventListener("load", parseFile, false);
+			if (file){
+				reader.readAsText(file);
+			}
+		}
+
+		function parseFile(){
+			var doesColumnExist = false;
+			var data = d3.csv.parse(reader.result, function(d){
+				doesColumnExist = d.hasOwnProperty("Data");
+				return d;
+			});
+
+			raw_data = data;
+
+			//console.log(doesColumnExist);
+			//console.log(data);
+		}
+
+
+			//var raw_data;
+			//d3.csv("data/sample_data.csv",function(data){
+			//	raw_data = data;
+			//	visualize(data);
+			//});	
+		
+
+		//Set up size
+		
+
+		//var spaceBetweenDataAndLegend = 0;
+		var legWidth = 200;
+		var legHeight = 500;
+		var svgLegend = d3.select("#svg-leg").append("svg")
+											.attr("width",legWidth)
+											.attr("height",legHeight);
+
+		var distanceBetweenGraphAndLegend = legWidth+100;
+		var width = getWidth()-distanceBetweenGraphAndLegend;	
+		//var width = getWidth();
+			height = 100;
+
+		var svgGraph = d3.select("#svg-col").append("svg")
+									   .attr("width", width)
+									   .attr("height", height);
+
+		function visualize(data){
+			//(console.log("Visualizing..."))
+			//var filteredData = data.data;
+			//VARIABLES
+			var colorScale = d3.scale.category20();
+			var rectWidth = parseInt(document.getElementById("rWidth").value);
+			console.log(rectWidth);
+			var rectHeight = parseInt(document.getElementById("rHeight").value);
+			//console.log(rectHeight);
+			var spaceBetweenRectanglesX = parseInt(document.getElementById("xSpace").value);
+			//console.log(spaceBetweenRectanglesX);
+			var spaceBetweenLinesY = parseInt(document.getElementById("ySpace").value);
+			//console.log(spaceBetweenLinesY);
+			var spaceInterval = parseInt(document.getElementById("intSpace").value);
+			//console.log(spaceInterval);
+			var timeInterval = parseInt(document.getElementById("intFreq").value);
+			//console.log(timeInterval);
+			var buffer = 100;
+			var maxNoRect = Math.floor((width-buffer)/(rectWidth+spaceBetweenRectanglesX)); //maximum number of rectangles in 
+			//console.log(maxNoRect)
+
+			document.getElementById("maxR").max = maxNoRect;
+			if (parseInt(document.getElementById("maxR").value)>maxNoRect){
+				document.getElementById("maxR").value = maxNoRect;
+			}
+			
+			var maxRectanglesPerRow = parseInt(document.getElementById("maxR").value);
+
+			document.getElementById("intFreq").max = maxRectanglesPerRow;
+			if (timeInterval>maxRectanglesPerRow){
+				timeInterval=maxRectanglesPerRow;
+				document.getElementById("intFreq").value=timeInterval;
+			}
+			
+			var maxIntervalSpace = Math.floor(buffer/(maxRectanglesPerRow/timeInterval));
+			document.getElementById("intSpace").max=maxIntervalSpace;
+			if (spaceInterval>maxIntervalSpace){
+				spaceInterval = maxIntervalSpace;
+				document.getElementById("intSpace").value=spaceInterval;
+			}
+
+			//DRAW RECTANGLES
+			var rectangles = svgGraph.selectAll("rect");
+			rectangles.remove();
+
+			rectangles = svgGraph.selectAll("rect").data(data);
+			rectangles.enter()
+				.append("rect")
+				.attr("x", function(d,i){
+					var extraSpace = 0;
+					if (timeInterval!=0 && timeInterval<maxRectanglesPerRow){
+						var mod = Math.floor(i%maxRectanglesPerRow);
+						extraSpace = Math.floor(mod/timeInterval)*spaceInterval;
+						//console.log("extraSpace "+extraSpace+" "+i);
+					}
+					if (i<maxNoRect && i<maxRectanglesPerRow){
+						//console.log((i*rectWidth)+(i*spaceBetweenRectanglesX));
+						return (i*rectWidth)+(i*spaceBetweenRectanglesX)+extraSpace;
+					}
+					else {
+
+						var mod = Math.floor(i%maxRectanglesPerRow);
+						//console.log((mod*rectWidth)+(mod*spaceBetweenRectanglesX));
+						return (mod*rectWidth)+(mod*spaceBetweenRectanglesX)+extraSpace;
+					}
+				})
+				.attr("y",function(d,i){
+					var lineNumber = Math.floor(i/maxRectanglesPerRow);
+					height = (lineNumber+2)*(spaceBetweenLinesY+rectHeight);
+					svgGraph.attr("height",height);
+					//console.log(lineNumber);
+					return lineNumber*(spaceBetweenLinesY+rectHeight);
+				})
+				.attr("width",rectWidth)
+				.attr("height",rectHeight)
+				.attr("fill",function(d){return colorScale(d.Data);})
+				.attr("stroke-width",1)
+				.attr("stroke", "MidnightBlue")
+				//.style("opacity",0.8)
+				.attr("id",function(d){return 'tag'+d.Data;})
+				.append("title")
+				.text(function(d,i){
+					return "Category: "+d.Data+", Time Count: "+i;
+				});
+
+			//LEGEND
+			var legTextStartX = 40;
+			var legTextSpace = 50;
+			var legSquareStartX = 5;
+			var legSquareWidth = 25;
+			var texts = svgLegend.selectAll("text");
+			texts.remove();
+			var squaresLeg = svgLegend.selectAll("rect");
+			squaresLeg.remove();
+
+			var dataNest = d3.nest()
+							 .key(function(d){return d.Data})
+							 .entries(data);
+			dataNest.forEach(function(d,i){
+				var colorLegend = svgLegend.append("text")
+										   .attr("x", legTextStartX)
+										   .attr("y",(i)*legTextSpace+(legSquareWidth))
+										   .attr("class","legend")
+										   //.style("fill",function(){
+										   		//return colorScale(d.key);})
+										   .text(d.key)
+										   .attr("font-size","30px");
+				var squareLegend = svgLegend.append("rect")
+											.attr("x",legSquareStartX)
+											.attr("y",(i)*legTextSpace)
+											.attr("width", legSquareWidth)
+											.attr("height", legSquareWidth)
+											.attr("class", "legend")
+											.style("fill",function(){
+										   		return colorScale(d.key);})
+											.style("stroke-width",1)
+											.style("stroke","black")
+											.on("mouseover", function(){
+												d3.selectAll("rect").style("opacity",0.2);
+												d3.select(this).style("opacity",1);
+												svgGraph.selectAll("#tag"+d.key).style("opacity",1);
+											})
+											//.on("click",function(){
+												//var currTag = 'tag'+d.key;
+												//var active = currTag.active ? false:true,
+												//	newOpacity = active ? 0.2:1;
+												//svgGraph.selectAll("#tag"+d.key).style("opacity",newOpacity);
+												//currTag.active = active;
+											//})
+											.on("mouseout",function(){
+												d3.select(this).style("opacity",1);
+												d3.selectAll("rect").style("opacity",1);
+												//d3.selectAll("#tag"+d.key).style("stroke","black");
+											});
+
+				legHeight = (i+2)*legTextSpace;
+				svgLegend.attr("height",legHeight);
+
+			});
+
+
+		}
+		
+		function getWidth() {
+  			if (self.innerHeight) {
+    			return self.innerWidth;
+  			}
+
+  			if (document.documentElement && document.documentElement.clientWidth) {
+    			return document.documentElement.clientWidth;
+  			}
+
+  			if (document.body) {
+    			return document.body.clientWidth;
+  			}
+		}
+
+		</script>
+	</body>
+</html>
